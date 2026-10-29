@@ -66,22 +66,31 @@ def _attrs():
     return None, None, None
 
 
-def adb(cmd, timeout=20):
-    """下发一条 adb 命令，返回设备回显（已剥离 nonce）。"""
-    eid = auto_entity()
-    nonce = 'NA%05d' % random.randint(0, 99999)
-    full = 'echo %s_S; %s; echo %s_E' % (nonce, cmd, nonce)
-    ws().call_service('androidtv', 'adb_command', {'command': full}, {'entity_id': eid})
+def adb(cmd, timeout=20, retry=3):
+    """下发一条 adb 命令，返回设备回显（已剥离 nonce）。
 
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        time.sleep(1.2)
-        _, _, resp = _attrs()
-        if resp and (nonce + '_E') in str(resp):
-            body = str(resp).split(nonce + '_S', 1)[-1].split(nonce + '_E', 1)[0]
-            return body.strip()
-    _, _, resp = _attrs()
-    return '<TIMEOUT> last=%r' % (str(resp)[-120:] if resp else None)
+    只有 **开始标记和结束标记都出现** 才算这条命令的结果。
+    只看到结束标记 = 读到的是上一条命令的残留回显（HA 的 adb_response
+    更新有延迟，连发命令时很常见），此时换个 nonce 重试。
+    """
+    eid = auto_entity()
+    per_try = max(4.0, float(timeout) / max(1, retry))
+    last = None
+    for _ in range(max(1, retry)):
+        nonce = 'NA%05d' % random.randint(0, 99999)
+        full = 'echo %s_S; %s; echo %s_E' % (nonce, cmd, nonce)
+        ws().call_service('androidtv', 'adb_command', {'command': full}, {'entity_id': eid})
+
+        deadline = time.time() + per_try
+        while time.time() < deadline:
+            time.sleep(1.2)
+            _, _, resp = _attrs()
+            s = str(resp or '')
+            last = s
+            if (nonce + '_S') in s and (nonce + '_E') in s:
+                body = s.split(nonce + '_S', 1)[-1].split(nonce + '_E', 1)[0]
+                return body.strip()
+    return '<TIMEOUT> last=%r' % (str(last)[-120:] if last else None)
 
 
 def state():

@@ -8,6 +8,36 @@
 
 ---
 
+## 这台机器到底是什么（先看这个）
+
+换机器、换固件，下面一半的结论就不成立了，所以先把环境交代清楚。
+
+| 项目 | 值 |
+|---|---|
+| 设备 | 斐讯 T1（Phicomm T1），内部代号 **q201** |
+| SoC | **Amlogic S912**，8 核 Cortex-A53 / Mali-T820 |
+| 内存 / 存储 | 2 GB（系统可见 1782 MB）/ 16 GB eMMC（`/data` 11 G） |
+| 输出 | **1920×1080 / 240 dpi** |
+| 系统 | **Android 7.1.2（SDK 25）**，内核 **3.14.29**（2018-01-23 原厂内核） |
+| 固件 | **第三方官改包 `T1_ROM_20211231`**（`ro.build.display.id`），原厂 OTA 已被摘掉 |
+| root | 自带 **SuperSU 2.82**（`/system/xbin/su`），但 `su -c id` 停在 `u:r:toolbox:s0` —— **残缺 root，装不了开机自启脚本** |
+| SELinux | **Enforcing** |
+| Recovery | **没有 TWRP / 没有第三方 recovery，刷坏只能 USB 线刷** |
+| ADB | `ro.adb.secure=0` + `persist.adb.tcp.port=5555`，**开机即开、无授权弹窗** |
+| 控制通道 | **Home Assistant `androidtv` 集成**（本机 adb 恒 offline，详见 docs/01） |
+| HA | 验证于 **2026.9.3** |
+
+想核对你手上那台是不是同一套环境：
+
+```bash
+python scripts/probe_device.py
+```
+
+它会一次打出硬件、固件、root、分区、网络、应用清单，贴 issue 时直接贴这份输出。
+完整说明见 [**docs/01 设备与环境**](docs/01-device.md)。
+
+---
+
 ## 能实现什么
 
 | 能力 | 说明 |
@@ -41,7 +71,7 @@
 
 | 文档 | 内容 |
 |---|---|
-| [01-设备与环境](docs/01-device.md) | 机器参数、ADB 是怎么开的、为什么本机 adb 连不上 |
+| [01-设备与环境](docs/01-device.md) | **硬件规格、固件身份与来源、残缺 root、分区、预装应用、网络与 HA 环境**、ADB 为什么本机连不上 |
 | [02-接入-HA](docs/02-ha-integration.md) | androidtv 集成、实体、中文命名、活动页显示 |
 | [03-遥控面板](docs/03-remote-panel.md) | Universal Remote Card 配置、键码表、DPAD 的坑 |
 | [04-数字键盘与中文输入](docs/04-chinese-input.md) | 折叠键盘、ADBKeyboard、base64 广播、临时切 IME |
@@ -54,6 +84,7 @@
 | 文件 | 作用 |
 |---|---|
 | `ha_ws.py` | 极简 HA WebSocket 客户端（只用标准库，读环境变量） |
+| `probe_device.py` | **环境探测**：一次打出硬件 / 固件 / root / 网络 / 应用报告 |
 | `adb_helper.py` | 走 HA 通道下发 adb 命令（带 nonce 校验，解决回显错位） |
 | `build_remote_view.py` | 生成遥控面板 Lovelace 视图 JSON |
 | `send_text_automation.yaml` | 中文/英文混合输入自动化，可直接粘进 automations.yaml |
