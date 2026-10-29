@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+_lovelace_*_backup_*.json
+.bak-*
+.DS_Store

@@ -1,0 +1,55 @@
+# 把这段拼进你的 automations.yaml
+#
+# 前置：
+#   1. 在 HA 里建 helper：input_text.t1_text（名称随意，最长 100）
+#   2. 盒子装了 ADBKeyboard（见 docs/04 与 install_adbkeyboard.sh）
+#   3. media_player 实体换成你自己的
+#
+# 逻辑：
+#   纯英文数字 -> adb input text
+#   含中文     -> 临时切 ADBKeyboard -> base64 广播 -> 立刻切回搜狗
+#
+# 注意 mode: queued（不是 restart），否则连发两条会把输入法留在 ADBKeyboard 上。
+
+- id: t1_box_send_text
+  alias: "电视盒子发送文字"
+  description: 面板输入文字后打到盒子，纯英文走 input text，含中文自动临时切 ADBKeyboard 发送。
+  mode: queued
+  max: 4
+  trigger:
+    - platform: state
+      entity_id: input_text.t1_text
+  condition:
+    - condition: template
+      value_template: "{{ (trigger.to_state.state or '') | length > 0 }}"
+  variables:
+    txt: "{{ trigger.to_state.state }}"
+  action:
+    - choose:
+        # 含非 ASCII（中文/日文/emoji）
+        - conditions:
+            - condition: template
+              value_template: "{{ (trigger.to_state.state or '') | regex_findall('[^ -~]') | count > 0 }}"
+          sequence:
+            - service: androidtv.adb_command
+              target:
+                entity_id: media_player.android_tv_192_168_1_20
+              data:
+                command: >-
+                  ime set com.android.adbkeyboard/.AdbIME; sleep 1;
+                  am broadcast -a ADB_INPUT_B64 --es msg '{{ txt | base64_encode }}'; sleep 1;
+                  ime set com.sohu.inputmethod.sogou.tv/.SogouIME
+      default:
+        # 纯 ASCII：不切输入法，最快
+        - service: androidtv.adb_command
+          target:
+            entity_id: media_player.android_tv_192_168_1_20
+          data:
+            command: >-
+              input text '{{ txt | replace(' ', '%s') | replace("'", '') }}'
+    - delay: "00:00:02"
+    - service: input_text.set_value
+      target:
+        entity_id: input_text.t1_text
+      data:
+        value: ""
