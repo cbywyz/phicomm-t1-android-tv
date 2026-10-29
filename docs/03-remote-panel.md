@@ -144,3 +144,21 @@ T1 上验证可用的：
 | 斐讯直播 | `monkey -p com.fxrom.launcher.tvlive -c android.intent.category.LAUNCHER 1` |
 | 斐讯影音 | `monkey -p com.fxrom.launcher.media -c android.intent.category.LAUNCHER 1` |
 | 系统设置 | `am start -n com.android.settings/.Settings` |
+
+---
+
+## 下一步：接进来之后做什么
+
+遥控面板是「底座」——盒子已经在 HA 里了，后面的玩法都是复用这个 `media_player` 实体。
+
+最常接的一篇是同系列的 [**ha-tv-kids-lock**](https://github.com/cbywyz/ha-tv-kids-lock)：
+不需要改电视、不需要装电视端 App，全部在 HA 侧做，孩子拿遥控器绕不过去。
+
+| 能力 | 怎么做 |
+|---|---|
+| 音量上限锁 | 监听 `media_player` 音量，超过阈值就 `volume_down` 打回去 |
+| 信号源锁 | 检测到切到游戏机/HMDI 就切回来 |
+| 每日观看配额 | 累计 `playing` 时长，到点自动关 |
+| 倒计时暂停 | 定时器到点 → 暂停 + 提示 |
+
+它用的就是你这里做出来的 `media_player.android_tv_*` 和 `remote.*`，实体名对上就能直接套。
